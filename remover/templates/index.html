@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Instant Background Remover</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<script src="https://cdn.tailwindcss.com"></script>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"
+		/>
+		<style>
+			body {
+				font-family: "Inter", sans-serif;
+			}
+		</style>
+	</head>
+
+	<body
+		class="bg-gradient-to-br from-gray-900 to-gray-800 min-h-screen flex items-center justify-center text-white"
+	>
+		<div class="w-full max-w-4xl mx-auto p-4">
+			<div
+				class="bg-gray-950 bg-opacity-90 p-6 sm:p-8 rounded-2xl shadow-xl border border-cyan-600 transition-all duration-300"
+			>
+				<!-- Title -->
+				<h1
+					class="text-2xl sm:text-3xl font-extrabold text-center text-cyan-400 mb-6 tracking-wide"
+				>
+					Image Background Remover
+				</h1>
+
+				<!-- Upload Form -->
+				<form
+					id="bgRemoveForm"
+					class="flex flex-col sm:flex-row gap-4 items-center sm:items-stretch justify-center mb-6"
+				>
+					{% csrf_token %}
+					<input
+						type="file"
+						name="image"
+						accept="image/*"
+						required
+						id="imageInput"
+						class="flex-1 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500 file:text-white hover:file:bg-cyan-400 bg-gray-800 text-gray-200 rounded-lg p-2 outline outline-dashed outline-1 outline-gray-700 transition-all"
+					/>
+					<button
+						type="submit"
+						id="submitBtn"
+						class="relative whitespace-nowrap bg-gradient-to-r from-cyan-500 to-lime-400 text-black font-bold py-3 px-6 rounded-full hover:from-lime-400 hover:to-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-400 transition text-base flex items-center justify-center gap-2"
+					>
+						<svg
+							id="spinner"
+							class="hidden animate-spin h-5 w-5 text-black"
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+						>
+							<circle
+								class="opacity-25"
+								cx="12"
+								cy="12"
+								r="10"
+								stroke="currentColor"
+								stroke-width="4"
+							></circle>
+							<path
+								class="opacity-75"
+								fill="currentColor"
+								d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+							></path>
+						</svg>
+						<span id="btnText">Remove BG</span>
+					</button>
+				</form>
+
+				<!-- Image Area -->
+				<div
+					id="imageArea"
+					class="flex flex-col md:flex-row gap-6 justify-center items-start"
+				>
+					<!-- Preview Image -->
+					<div class="w-full md:w-1/2 text-center">
+						<h2 class="text-lg text-cyan-300 font-semibold mb-2">
+							Selected Image
+						</h2>
+						<img
+							id="preview"
+							src=""
+							alt="Image Preview"
+							class="w-full max-h-72 object-contain mx-auto rounded-lg border border-gray-600 shadow hidden"
+						/>
+					</div>
+
+					<!-- Result Image -->
+					<div
+						id="resultContainer"
+						class="w-full md:w-1/2 text-center hidden"
+					>
+						<h2 class="text-lg text-cyan-300 font-semibold mb-2">
+							Processed Result
+						</h2>
+						<img
+							id="resultImage"
+							src=""
+							alt="Processed Image"
+							class="w-full max-h-72 object-contain mx-auto rounded-lg shadow-lg border border-cyan-500"
+						/>
+						<a
+							id="downloadLink"
+							href="#"
+							download
+							class="inline-block mt-4 bg-cyan-500 text-black font-semibold py-2 px-6 rounded-lg hover:bg-white hover:text-indigo-700 focus:outline-none focus:ring-2 focus:ring-cyan-400 transition invisible opacity-0"
+						>
+							Download Processed Image
+						</a>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			const form = document.getElementById("bgRemoveForm");
+			const imageInput = document.getElementById("imageInput");
+			const preview = document.getElementById("preview");
+			const resultContainer = document.getElementById("resultContainer");
+			const resultImage = document.getElementById("resultImage");
+			const downloadLink = document.getElementById("downloadLink");
+
+			// Show preview
+			imageInput.addEventListener("change", () => {
+				const file = imageInput.files[0];
+				if (!file) return;
+				const reader = new FileReader();
+				reader.onload = (e) => {
+					preview.src = e.target.result;
+					preview.classList.remove("hidden");
+				};
+				reader.readAsDataURL(file);
+			});
+
+			// AJAX Form Submit
+			form.addEventListener("submit", async (e) => {
+				e.preventDefault();
+
+				const file = imageInput.files[0];
+				if (!file) return alert("Please select an image.");
+
+				const formData = new FormData();
+				formData.append("image", file);
+
+				const csrfToken = document.querySelector(
+					"[name=csrfmiddlewaretoken]"
+				).value;
+
+				const response = await fetch("{% url 'remove_bg' %}", {
+					method: "POST",
+					headers: { "X-CSRFToken": csrfToken },
+					body: formData,
+				});
+
+				const data = await response.json();
+
+				if (data.result_url) {
+					resultImage.src = data.result_url;
+					downloadLink.href = data.download_url || data.result_url;
+					downloadLink.classList.remove("invisible", "opacity-0");
+					resultContainer.classList.remove("hidden");
+				} else {
+					alert("Something went wrong.");
+				}
+			});
+		</script>
+	</body>
+</html>
